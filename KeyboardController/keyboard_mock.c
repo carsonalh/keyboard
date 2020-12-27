@@ -5,15 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum
-{
-    EX_CREATE,
-    EX_KEY_DOWN,
-} ExEnum;
-
 typedef struct Expectation
 {
-    ExEnum type;
+    KMEnum type;
     bool met;
     union
     {
@@ -23,6 +17,25 @@ typedef struct Expectation
 } Expectation;
 
 static Expectation * expectations = NULL;
+static KEnum keys[MAX_KEYS];
+static KMEnum last_error_code = 0;
+
+static Expectation * Expectation_Create(void)
+{
+    Expectation * created = calloc(1, sizeof *created);
+
+    if (expectations == NULL)
+        expectations = created;
+    else
+    {
+        Expectation * node = expectations;
+        while (node->next)
+            node = node->next;
+        node->next = created;
+    }
+
+    return created;
+}
 
 void KeyboardMock_Create(void)
 {
@@ -41,44 +54,30 @@ void KeyboardMock_Destroy(void)
     }
 
     expectations = NULL;
+
+    for (int i = 0; i < MAX_KEYS; ++i)
+        keys[i] = KEY_UP;
+
+    last_error_code = 0;
 }
 
 void KeyboardMock_ExpectCreate(void)
 {
-    if (expectations == NULL)
-    {
-        expectations = calloc(1, sizeof *expectations);
-        expectations->type = EX_CREATE;
-    }
-    else
-    {
-        Expectation * node = expectations;
-        while (node->next)
-            node = node->next;
-        Expectation * last = calloc(1, sizeof *node);
-        node->next = last;
-        last->type = EX_CREATE;
-    }
+    Expectation * e = Expectation_Create();
+    e->type = KM_CREATE;
 }
 
-void KeyboardMock_ExpectIsKeyDown(int key)
+void KeyboardMock_ExpectDestroy(void)
 {
-    if (expectations == NULL)
-    {
-        expectations = calloc(1, sizeof *expectations);
-        expectations->type = EX_KEY_DOWN;
-        expectations->key = key;
-    }
-    else
-    {
-        Expectation * node = expectations;
-        while (node->next)
-            node = node->next;
-        Expectation * last = calloc(1, sizeof *node);
-        node->next = last;
-        last->type = EX_KEY_DOWN;
-        last->key = key;
-    }
+    Expectation * e = Expectation_Create();
+    e->type = KM_DESTROY;
+}
+
+void KeyboardMock_ExpectGetKeyState(int key)
+{
+    Expectation * e = Expectation_Create();
+    e->type = KM_GET_KEY_STATE;
+    e->key = key;
 }
 
 void Keyboard_Create(void)
@@ -89,7 +88,7 @@ void Keyboard_Create(void)
             node = node->next
     )
     {
-        if (node->type == EX_CREATE)
+        if (node->type == KM_CREATE)
         {
             node->met = true;
             return;
@@ -97,11 +96,25 @@ void Keyboard_Create(void)
     }
 }
 
-static bool keys[MAX_KEYS];
+void Keyboard_Destroy(void)
+{
+    for (
+            Expectation * node = expectations;
+            node;
+            node = node->next
+    )
+    {
+        if (node->type == KM_DESTROY)
+        {
+            node->met = true;
+            return;
+        }
+    }
+}
 
 void KeyboardMock_SetKey(int key, KEnum state)
 {
-    keys[key] = (state == KEY_UP) ? true : false;
+    keys[key] = state;
 }
 
 KEnum Keyboard_GetKeyState(int key)
@@ -109,7 +122,7 @@ KEnum Keyboard_GetKeyState(int key)
     Expectation * node = expectations;
     while (node)
     {
-        if (node->type == EX_KEY_DOWN && node->key == key)
+        if (node->type == KM_GET_KEY_STATE && node->key == key)
         {
             node->met = true;
             return keys[key];
@@ -125,9 +138,18 @@ bool KeyboardMock_Verify(void)
     while (node)
     {
         if (!node->met)
+        {
+            last_error_code = node->type;
             return false;
+        }
         node = node->next;
     }
     return true;
+}
+
+KMEnum KeyboardMock_GetLastErrorCode(void)
+{
+    /* return KM_CREATE | KM_EXPECTATION_NOT_MET; */
+    return last_error_code;
 }
 
