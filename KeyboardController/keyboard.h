@@ -14,7 +14,7 @@ typedef enum
 } KEnum;
 
 void Keyboard_Create(void);
-bool Keyboard_IsKeyDown(int key);
+KEnum Keyboard_GetKeyState(int key);
 
 #ifdef __cplusplus
 }

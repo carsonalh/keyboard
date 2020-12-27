@@ -35,12 +35,21 @@ TEST(KeyboardMock, CanVerifyCreateWasCalled)
     KeyboardMock_ExpectCreate();
     Keyboard_Create();
     bool result = KeyboardMock_Verify();
-    TEST_ASSERT(result);
+    TEST_ASSERT_TRUE(result);
 }
 
 TEST(KeyboardMock, CanVerifyCreateWasNotCalled)
 {
     KeyboardMock_ExpectCreate();
+    bool result = KeyboardMock_Verify();
+    TEST_ASSERT_FALSE(result);
+}
+
+TEST(KeyboardMock, CanVerifyMultipleCreateCalls)
+{
+    KeyboardMock_ExpectCreate();
+    KeyboardMock_ExpectCreate();
+    Keyboard_Create();
     bool result = KeyboardMock_Verify();
     TEST_ASSERT_FALSE(result);
 }
@@ -53,8 +62,8 @@ TEST(KeyboardMock, GetAndSetKeyStateYieldsSameValue)
         bool expected = rand() % 2;
         KEnum state = expected ? KEY_UP : KEY_DOWN;
         KeyboardMock_SetKey(i, state);
-        bool actual = Keyboard_IsKeyDown(i);
-        TEST_ASSERT(expected == actual);
+        bool actual = Keyboard_GetKeyState(i);
+        TEST_ASSERT_TRUE(expected == actual);
     }
 }
 
@@ -68,15 +77,15 @@ TEST(KeyboardMock, CanVerifyIsKeyDownNegative)
 TEST(KeyboardMock, CanVerifyIsKeyDownPositive)
 {
     KeyboardMock_ExpectIsKeyDown(3);
-    (void)Keyboard_IsKeyDown(3);
+    (void)Keyboard_GetKeyState(3);
     bool result = KeyboardMock_Verify();
-    TEST_ASSERT(result);
+    TEST_ASSERT_TRUE(result);
 }
 
 TEST(KeyboardMock, CanVerifyIsKeyDownDifferentKeys)
 {
     KeyboardMock_ExpectIsKeyDown(3);
-    (void)Keyboard_IsKeyDown(5);
+    (void)Keyboard_GetKeyState(5);
     bool result = KeyboardMock_Verify();
     TEST_ASSERT_FALSE(result);
 }
@@ -86,9 +95,9 @@ TEST(KeyboardMock, CanVerifyIsKeyDownMultipleTimes)
     KeyboardMock_ExpectIsKeyDown(3);
     KeyboardMock_ExpectIsKeyDown(12);
     KeyboardMock_ExpectIsKeyDown(1);
-    (void)Keyboard_IsKeyDown(3);
+    (void)Keyboard_GetKeyState(3);
     bool result = KeyboardMock_Verify();
-    TEST_ASSERT(result);
+    TEST_ASSERT_FALSE(result);
 }
 
 TEST_GROUP_RUNNER(KeyboardMock)
@@ -97,6 +106,7 @@ TEST_GROUP_RUNNER(KeyboardMock)
     RUN_TEST_CASE(KeyboardMock, CanVerify);
     RUN_TEST_CASE(KeyboardMock, CanVerifyCreateWasCalled);
     RUN_TEST_CASE(KeyboardMock, CanVerifyCreateWasNotCalled);
+    RUN_TEST_CASE(KeyboardMock, CanVerifyMultipleCreateCalls);
     RUN_TEST_CASE(KeyboardMock, GetAndSetKeyStateYieldsSameValue);
     RUN_TEST_CASE(KeyboardMock, CanVerifyIsKeyDownPositive);
     RUN_TEST_CASE(KeyboardMock, CanVerifyIsKeyDownNegative);
