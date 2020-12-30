@@ -8,4 +8,5 @@ set (UNITY_EXTENSION_FIXTURE ON CACHE BOOL "")
 add_subdirectory (Unity)
 
 add_subdirectory (KeyboardController)
+add_subdirectory (KeyboardLayer)
 
